@@ -7,7 +7,7 @@ public class WatchChannelStrategy implements WatchChannelUseCase
 	@FunctionalInterface
 	public interface Repository
 	{
-		MessageStream watchChannelAndRetrieveMessageStream(final String channelName, final String userId);
+		Channel watchChannel(final String channelName, final String userId);
 	}
 
 	public WatchChannelStrategy(final Repository repository)
@@ -18,7 +18,7 @@ public class WatchChannelStrategy implements WatchChannelUseCase
 	@Override
 	public Response watchChannel(Request request)
 	{
-		return new Response(repository.watchChannelAndRetrieveMessageStream(request.channelName, request.userId));
+		return new Response(request.userId, repository.watchChannel(request.channelName, request.userId));
 	}
 
 	private final Repository repository;

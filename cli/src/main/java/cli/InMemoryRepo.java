@@ -8,7 +8,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class InMemoryRepo implements CreateChannelStrategy.Repository, ListWatchedChannelsStrategy.Repository, WatchChannelStrategy.Repository, SendMessageStrategy.Repository, LeaveChannelStrategy.Repository
+public class InMemoryRepo implements CreateChannelStrategy.Repository, ExploreChannelsStrategy.Repository, ListWatchedChannelsStrategy.Repository, WatchChannelStrategy.Repository, SendMessageStrategy.Repository, LeaveChannelStrategy.Repository, ConnectChannelStrategy.Repository
 {
 	@Override
 	public boolean channelNameExists(final String name)
@@ -20,27 +20,46 @@ public class InMemoryRepo implements CreateChannelStrategy.Repository, ListWatch
 	public Channel createChannelWithName(final String name, final String ownerId)
 	{
 		final String id = keyize(name);
-		map.put(id, new InMemChannel(name));
-		watched.computeIfAbsent(ownerId, k -> new HashSet<>()).add(name);
-		return new Channel(id, name);
+		final Channel channel = new Channel(id, name);
+		map.put(id, new InMemChannel(channel));
+		return channel;
 	}
 
 	@Override
-	public MessageStream watchChannelAndRetrieveMessageStream(final String channelName, final String userId)
+	public List<Channel> seekChannels(final String afterName, final long count)
+	{
+		return map.values().stream()
+			.map(imc -> imc.channel)
+			.sorted(Comparator.comparing(c -> c.name))
+			.dropWhile(c -> afterName != null && c.name.compareTo(afterName) < 1)
+			.limit(count)
+			.collect(Collectors.toList());
+	}
+
+	@Override
+	public MessageStream connectChannel(String channelId)
+	{
+		final InMemChannel imc = map.get(channelId);
+		if(imc == null)
+			throw new RuntimeException(String.format("Channel id does not exist: %s", channelId));
+		return new MessageStream(imc.channel, imc.stream(), 0);
+	}
+
+	@Override
+	public Channel watchChannel(final String channelName, final String userId)
 	{
 		final String id = keyize(channelName);
 		final InMemChannel imc = map.get(id);
 		if(imc == null)
 			throw new RuntimeException(String.format("Channel does not exist: %s", channelName));
 		watched.computeIfAbsent(userId, k -> new HashSet<>()).add(id);
-		final Channel channel = new Channel(id, channelName);
-		return new MessageStream(channel, imc.stream(), 0);
+		return imc.channel;
 	}
 
 	@Override
 	public List<Channel> retrieveWatchedChannelsForUser(final String userId)
 	{
-		return watched.getOrDefault(userId, Set.of()).stream().map(s -> new Channel(keyize(s), s)).collect(Collectors.toList());
+		return watched.getOrDefault(userId, Set.of()).stream().map(map::get).map(imc -> imc.channel).collect(Collectors.toList());
 	}
 
 	@Override
@@ -50,15 +69,9 @@ public class InMemoryRepo implements CreateChannelStrategy.Repository, ListWatch
 		if (watched.containsKey(userId))
 			watched.get(userId).remove(id);
 
-		final Optional<Channel> o = Optional.ofNullable(map.get(id)).map(c -> new Channel(id, c.name));
+		final Optional<Channel> o = Optional.ofNullable(map.get(id)).map(c -> c.channel);
 
 		return o;
-	}
-
-	@Override
-	public boolean isUserWatchingChannel(final String channelId, final String userId)
-	{
-		return watched.getOrDefault(userId, Set.of()).contains(channelId);
 	}
 
 	@Override
@@ -70,7 +83,7 @@ public class InMemoryRepo implements CreateChannelStrategy.Repository, ListWatch
 	private String keyize(final String name)
 	{
 		return map.entrySet().stream()
-			.filter(e -> e.getValue().name.equalsIgnoreCase(name))
+			.filter(e -> e.getValue().channel.name.equalsIgnoreCase(name))
 			.map(Map.Entry::getKey)
 			.findAny()
 			.orElseGet(() -> String.valueOf(counter++));
@@ -83,12 +96,12 @@ public class InMemoryRepo implements CreateChannelStrategy.Repository, ListWatch
 
 	private static class InMemChannel
 	{
-		final String name;
+		final Channel channel;
 		private final LinkedBlockingQueue<Message> q;
 
-		InMemChannel(final String name)
+		InMemChannel(final Channel channel)
 		{
-			this.name = Objects.requireNonNull(name,"name");
+			this.channel = Objects.requireNonNull(channel,"channel");
 			this.q = new LinkedBlockingQueue<>();
 		}
 

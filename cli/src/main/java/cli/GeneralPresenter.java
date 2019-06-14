@@ -64,10 +64,21 @@ public class GeneralPresenter
 		return this;
 	}
 
+	public GeneralPresenter ignoreNextPresentation()
+	{
+		this.ignoreNext = true;
+		return this;
+	}
+
 	private boolean handle(final Class<?> rClass, final Object o) throws Exception
 	{
-		if (!rClass.isInstance(o))
-			throw new ClassCastException();
+		if (ignoreNext)
+		{
+			ignoreNext = false;
+			return true;
+		}
+		if (o != null && !rClass.isInstance(o))
+			throw new ClassCastException("Expected " + rClass.getName() + " but found " + o.getClass().getName());
 		final Consumer<?> c = handlers.get(rClass);
 		if (c == null)
 			return false;
@@ -75,5 +86,6 @@ public class GeneralPresenter
 		return true;
 	}
 
+	private boolean ignoreNext = false;
 	private Map<Class<?>, Consumer<?>> handlers = new HashMap<>();
 }

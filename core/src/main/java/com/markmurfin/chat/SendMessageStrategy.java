@@ -5,9 +5,9 @@ import java.util.Objects;
 
 public class SendMessageStrategy implements SendMessageUseCase
 {
+	@FunctionalInterface
 	public interface Repository
 	{
-		boolean isUserWatchingChannel(String channelId, String userId);
 		void persistMessage(String channelId, Message message);
 	}
 
@@ -19,8 +19,6 @@ public class SendMessageStrategy implements SendMessageUseCase
 	@Override
 	public Response sendMessage(Request request)
 	{
-		if (!repository.isUserWatchingChannel(request.channelId, request.senderId))
-			throw new IllegalArgumentException("Sender is not watching channel");
 		final Message m = new Message(request.senderId, Instant.now(), request.content);
 		repository.persistMessage(request.channelId, m);
 		return new Response(request.channelId, m);

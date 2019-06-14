@@ -21,11 +21,13 @@ public interface WatchChannelUseCase
 
 	class Response
 	{
-		public final MessageStream messageStream;
+		public final String userId;
+		public final Channel channel;
 
-		public Response(final MessageStream messageStream)
+		public Response(final String userId, final Channel channel)
 		{
-			this.messageStream = Objects.requireNonNull(messageStream, "messageStream");
+			this.userId = Objects.requireNonNull(userId, "userId");
+			this.channel = Objects.requireNonNull(channel, "channel");
 		}
 	}
 

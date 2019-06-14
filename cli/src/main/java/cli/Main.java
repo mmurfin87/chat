@@ -5,8 +5,8 @@ import com.markmurfin.chat.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 
 public class Main
 {
@@ -21,6 +21,8 @@ public class Main
 			gp.registerAllPublicSingleParameterMethods(p);
 
 			final CreateChannelUseCase createChannel = gp.proxy(CreateChannelUseCase.class, new CreateChannelStrategy(r));
+			final ExploreChannelsUseCase exploreChannelsUseCase = gp.proxy(ExploreChannelsUseCase.class, new ExploreChannelsStrategy(r));
+			final ConnectChannelUseCase connectChannel = gp.proxy(ConnectChannelUseCase.class, new ConnectChannelStrategy(r));
 			final ListWatchedChannelsUseCase listWatchedChannels = gp.proxy(ListWatchedChannelsUseCase.class, new ListWatchedChannelsStrategy(r));
 			final WatchChannelUseCase joinChannel = gp.proxy(WatchChannelUseCase.class, new WatchChannelStrategy(r));
 			final LeaveChannelUseCase leaveChannel = gp.proxy(LeaveChannelUseCase.class, new LeaveChannelStrategy(r));
@@ -41,9 +43,10 @@ public class Main
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String line = null;
 			String userId = null;
-			final Set<Channel> activeChannels = new HashSet<>();
+			String currentChannel = null;
 			while ((line = br.readLine()) != null && !"/quit".equalsIgnoreCase(line))
 			{
+				line = line.trim();
 				if (userId == null)
 				{
 					if(!line.startsWith("/login "))
@@ -64,24 +67,37 @@ public class Main
 						final CreateChannelUseCase.Response response = createChannel.createChannel(new CreateChannelUseCase.Request(name, userId));
 						//p.createChannel(response);
 					}
+					else if (line.equalsIgnoreCase("/explore"))
+					{
+						final ExploreChannelsUseCase.Response response = exploreChannelsUseCase.exploreChannels(new ExploreChannelsUseCase.Request(10, Optional.empty()));
+					}
+					else if (line.startsWith("/join "))
+					{
+						final String name = line.substring(6);
+						gp.ignoreNextPresentation();
+						final ExploreChannelsUseCase.Response ecr = exploreChannelsUseCase.exploreChannels(new ExploreChannelsUseCase.Request(Integer.MAX_VALUE, Optional.empty()));
+						final ConnectChannelUseCase.Response response = ecr.channels.stream()
+							.filter(c -> c.name.equalsIgnoreCase(name))
+							.findAny()
+							.map(c -> new ConnectChannelUseCase.Request(c.id))
+							.map(connectChannel::connectChannel)
+							.orElse(null);
+						if (response == null)
+							System.out.println("INVALID CHANNEL");
+						else
+							currentChannel = response.messageStream.channel.id;
+					}
 					else if (line.startsWith("/watch "))
 					{
-						//if (currentChannel != null)
-						//{
-						//	final LeaveChannelUseCase.Response response = leaveChannel.leaveChannel(new LeaveChannelUseCase.Request(userId, currentChannel));
-
-						//}
 						final String name = line.substring(7);
 						final WatchChannelUseCase.Response response = joinChannel.watchChannel(new WatchChannelUseCase.Request(name, userId));
 						//p.watchChannel(response);
-						activeChannels.add(response.messageStream.channel);
 					}
 					else if (line.startsWith("/leave "))
 					{
 						final String name = line.substring(7);
 						final LeaveChannelUseCase.Response response = leaveChannel.leaveChannel(new LeaveChannelUseCase.Request(userId, name));
 						//p.leaveChannel(response);
-						activeChannels.remove(response.channel);
 					}
 					else if (line.equalsIgnoreCase("/list"))
 					{
@@ -95,13 +111,12 @@ public class Main
 					else
 						System.out.println("Invalid command!");
 				}
-				else if (activeChannels.isEmpty())
+				else if (currentChannel == null)
 				{
-					System.out.println("You are not watching a channel. Before sending a message, you must /watch <channel>");
+					System.out.println("You are not watching a channel. Before sending a message, you must /join <channel>");
 				}
 				else
 				{
-					final String currentChannel = activeChannels.iterator().next().id;
 					final SendMessageUseCase.Response response = sendMessage.sendMessage(new SendMessageUseCase.Request(userId, currentChannel, line));
 					//p.sendMessage(response);
 				}

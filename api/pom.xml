@@ -9,17 +9,7 @@
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.markmurfin.com.markmurfin.chat</groupId>
-	<artifactId>core</artifactId>
-
-	<dependencies>
-
-		<dependency>
-			<groupId>com.markmurfin.chat</groupId>
-			<artifactId>api</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-	</dependencies>
+	<groupId>com.markmurfin.chat</groupId>
+	<artifactId>api</artifactId>
 
 </project>
