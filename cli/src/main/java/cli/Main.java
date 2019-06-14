@@ -16,13 +16,22 @@ public class Main
 
 		try (final CliPresenter p = new CliPresenter())
 		{
-			final GeneralPresenter gp = new GeneralPresenter();
 			final InMemoryRepo r = new InMemoryRepo();
-			final CreateChannelUseCase createChannel = gp.prepare(CreateChannelUseCase.class, new CreateChannelStrategy(r), CreateChannelUseCase.Response.class, p::createChannel);
-			final ListWatchedChannelsUseCase listWatchedChannels = gp.prepare(ListWatchedChannelsUseCase.class, new ListWatchedChannelsStrategy(r), ListWatchedChannelsUseCase.Response.class, p::listWatchedChannels);
-			final WatchChannelUseCase joinChannel = gp.prepare(WatchChannelUseCase.class, new WatchChannelStrategy(r), WatchChannelUseCase.Response.class, p::watchChannel);
-			final LeaveChannelUseCase leaveChannel = gp.prepare(LeaveChannelUseCase.class, new LeaveChannelStrategy(r), LeaveChannelUseCase.Response.class, p::leaveChannel);
-			final SendMessageUseCase sendMessage = gp.prepare(SendMessageUseCase.class, new SendMessageStrategy(r), SendMessageUseCase.Response.class, p::sendMessage);
+			final GeneralPresenter gp = new GeneralPresenter();
+			gp.registerAllPublicSingleParameterMethods(p);
+
+			final CreateChannelUseCase createChannel = gp.proxy(CreateChannelUseCase.class, new CreateChannelStrategy(r));
+			final ListWatchedChannelsUseCase listWatchedChannels = gp.proxy(ListWatchedChannelsUseCase.class, new ListWatchedChannelsStrategy(r));
+			final WatchChannelUseCase joinChannel = gp.proxy(WatchChannelUseCase.class, new WatchChannelStrategy(r));
+			final LeaveChannelUseCase leaveChannel = gp.proxy(LeaveChannelUseCase.class, new LeaveChannelStrategy(r));
+			final SendMessageUseCase sendMessage = gp.proxy(SendMessageUseCase.class, new SendMessageStrategy(r));
+
+			//final CreateChannelUseCase createChannel = gp.prepare(CreateChannelUseCase.class, new CreateChannelStrategy(r), CreateChannelUseCase.Response.class, p::createChannel);
+			//final ListWatchedChannelsUseCase listWatchedChannels = gp.prepare(ListWatchedChannelsUseCase.class, new ListWatchedChannelsStrategy(r), ListWatchedChannelsUseCase.Response.class, p::listWatchedChannels);
+			//final WatchChannelUseCase joinChannel = gp.prepare(WatchChannelUseCase.class, new WatchChannelStrategy(r), WatchChannelUseCase.Response.class, p::watchChannel);
+			//final LeaveChannelUseCase leaveChannel = gp.prepare(LeaveChannelUseCase.class, new LeaveChannelStrategy(r), LeaveChannelUseCase.Response.class, p::leaveChannel);
+			//final SendMessageUseCase sendMessage = gp.prepare(SendMessageUseCase.class, new SendMessageStrategy(r), SendMessageUseCase.Response.class, p::sendMessage);
+
 			//final CreateChannelUseCase createChannel = new CreateChannelStrategy(r);
 			//final ListWatchedChannelsUseCase listWatchedChannels = new ListWatchedChannelsStrategy(r);
 			//final WatchChannelUseCase joinChannel = new WatchChannelStrategy(r);

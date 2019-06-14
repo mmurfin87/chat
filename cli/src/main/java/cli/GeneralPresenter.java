@@ -1,5 +1,7 @@
 package cli;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +21,8 @@ public class GeneralPresenter
 			try
 			{
 				final Object result = m.invoke(target, a);
-				handle(m.getReturnType(), result);
+				if (!handle(m.getReturnType(), result))
+					System.out.println("UNHANDLED: " + result.getClass().getName() + " - " + handlers);
 				return result;
 			}
 			catch (final Exception e)
@@ -29,6 +32,30 @@ public class GeneralPresenter
 				return null;
 			}
 		}));
+	}
+
+	public GeneralPresenter registerAllPublicSingleParameterMethods(final Object o)
+	{
+		for (final var m : o.getClass().getMethods())
+		{
+			if (Object.class.equals(m.getDeclaringClass())
+				|| m.getParameterCount() != 1
+				|| !Modifier.isPublic(m.getModifiers()))
+				continue;
+			final Class<?> c = m.getParameterTypes()[0];
+			handlers.put(m.getParameterTypes()[0], arg ->
+			{
+				try
+				{
+					m.invoke(o, arg);
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e);
+				}
+			});
+		}
+		return this;
 	}
 
 	public <T> GeneralPresenter register(final Class<T> tClass, Consumer<T> consumer)
